@@ -1,0 +1,49 @@
+name: FB-1637621 controlled validation
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+
+jobs:
+  positive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    container:
+      image: alpine:3.20
+    steps:
+      - name: Positive owner-authored environment baseline
+        env:
+          FB1637621_OWNER_MARKER: owner-authored-positive-baseline
+        run: |
+          printf '%s' "$FB1637621_OWNER_MARKER" | sha256sum | cut -d ' ' -f 1 | sed 's/^/POSITIVE_SHA256=/'
+          printf '%s\n' 'POSITIVE_OK=1'
+
+  negative:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    container:
+      image: alpine:3.20
+    steps:
+      - name: Canonical environment-input denial control
+        env:
+          FB1637621_INPUT: ${{ github.event.issue.title }}
+        working-directory: .
+        run: |
+          test -z "${FB1637621_BYPASS+x}"
+          printf '%s' "$FB1637621_INPUT" | sha256sum | cut -d ' ' -f 1 | sed 's/^/NEGATIVE_INPUT_SHA256=/'
+          printf '%s\n' 'NEGATIVE_DENIED=1'
+
+  bypass:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    container:
+      image: alpine:3.20
+    steps:
+      - name: Working-directory option-boundary test
+        working-directory: ${{ github.event.issue.title }}
+        run: |
+          test -n "${FB1637621_BYPASS+x}"
+          printf '%s' "$FB1637621_BYPASS" | sha256sum | cut -d ' ' -f 1 | sed 's/^/BYPASS_SHA256=/'
